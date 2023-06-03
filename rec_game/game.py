@@ -41,13 +41,13 @@ class Game:
         x1, y1, x2, y2 = self.canvas.coords(hole)  # 取得洞的座標(x1,y1代表左上角，x2,y2代表右下角)
         x = x1 + 50  # 一伴的地方畫圓形
         y = y1 + 50
-        self.mouse = self.canvas.create_oval(x-25, y-25, x+25, y+25, fill="gray")
+        self.mouse = self.canvas.create_oval(x-25, y-25, x+25, y+25, fill="gray")  # 地鼠(新的canvas物件)
         self.time_start = time.time()
 
     def click(self, event):
         x, y = event.x, event.y  # 取得滑鼠點擊的座標
         overlap = self.canvas.find_overlapping(x-1, y-1, x+1, y+1)  # 找出重疊的物件
-        if overlap and self.mouse in overlap:
+        if self.mouse in overlap:  # 如果有重疊到地鼠(overlap是滑鼠附近畫出來的canvas物件)，mouse是canvas物件
             self.clktime = round(time.time() - self.time_start, 2)  # 計算用時
             self.root.after(random.randint(950, 4000), self.show_mouse)  # 隨機時間後再出現地鼠
             self.show_time()
