@@ -7,7 +7,7 @@ import time
 # 參數設定
 HOST = '127.0.0.1'
 PORT = 8000
-MAX_CLIENTS = 1  # 最大客戶端數量
+MAX_CLIENTS = 2  # 最大客戶端數量
 ROUND = 5  # 遊戲回合數
 
 # 變數
@@ -28,7 +28,7 @@ class Game:
         self.timer = None  # 定時器
         self.mouse = None  # 地鼠
         self.time_start = None  # 遊戲開始時間
-        self.clktime = None  # 分數
+        self.clktime = 5  # 點擊時間
         self.text = None  # 列印字串
         self.round = 1  # 遊戲回合數
         # 產生25個洞
@@ -59,7 +59,8 @@ class Game:
 
     def show_mouse(self):
         self.send_msg("show_mouse")
-        # time.sleep(0.05)  # 讓客戶端有時間接收資料
+        print(server_score, end=' ')
+        print(clients_score)
 
         if self.mouse: # 如果有地鼠(不是None)，就刪除
             self.canvas.delete(self.mouse)
@@ -73,25 +74,42 @@ class Game:
         self.root.after(5000, self.endthisgame)
 
     def endthisgame(self):
-        self.send_msg("end")
+        global server_score
+        self.send_msg("round")
         if self.mouse: # 如果有地鼠(不是None)，就刪除
             self.canvas.delete(self.mouse)
-        print(self.round, ROUND)
-        if self.round < ROUND:
+        server_score += self.clktime
+        self.clktime = 5  # 初始化->沒點擊到會是5秒
+
+        if self.round < ROUND:  # 遊戲還沒結束
             self.round += 1
             self.root.after(100, self.show_mouse)  # 隨機時間後再出現地鼠
         else:
-            # 結束遊戲，顯示誰贏及分數
-            max_idx = -1
-            cur_max = server_score
-            for i in range(len(clients)):
-                if clients_score[i] > cur_max:
-                    max_idx = i
-                    cur_max = clients_score[i]
+            self.root.after(1000, self.end_game)  # 需要等待最後一次結束
 
-            if max_idx == -1:
-                self.show_str(f"winner is server. score={cur_max}", 300, 300, 30, "white", 5000)
-                self.send_msg(f"winner is server. score={cur_max}")
+    def end_game(self):
+        if self.mouse:  # 如果有地鼠(不是None)，就刪除
+            self.canvas.delete(self.mouse)
+
+        print(server_score, end=' ')
+        print(clients_score)
+
+        # 結束遊戲，顯示誰少時間
+        max_idx = -1
+        cur_max = server_score
+        for i in range(len(clients)):
+            if clients_score[i] < cur_max:
+                max_idx = i
+                cur_max = clients_score[i]
+
+        if max_idx == -1:
+            self.show_str(f"winner is server\ntime={cur_max}", 300, 300, 30, "white", -1)
+            self.send_msg(f"end:winner is server\ntime={cur_max}")
+        else:
+            client_ip = clients[max_idx].getpeername()[0]
+            client_port = clients[max_idx].getpeername()[1]
+            self.show_str(f"winner is {client_ip}:{client_port}\ntime={cur_max}", 300, 300, 30, "white", -1)
+            self.send_msg(f"end:winner is {client_ip}:{client_port}\ntime={cur_max}")
 
     def click(self, event):
         x, y = event.x, event.y  # 取得滑鼠點擊的座標
@@ -104,7 +122,8 @@ class Game:
 
     def show_str(self, string, x, y, size=30, color="white", time=900):
         self.text = self.canvas.create_text(x, y, text=string, font=("Arial", size), fill=color)
-        self.root.after(time, self.del_str)  # 0.9秒後刪除顯示分數
+        if time != -1:
+            self.root.after(time, self.del_str)  # 0.9秒後刪除顯示分數
 
     def del_str(self):
         self.canvas.delete(self.text)
@@ -126,8 +145,7 @@ def handle_client(server_socket):
             try:
                 data = connection.recv(1024).decode()
                 clients_score[i] += float(data)
-                print(clients_score)
-            except BlockingIOError:  # 沒有收到資料
+            except:  # 沒有收到資料
                 pass
 
 def main():

@@ -55,7 +55,8 @@ class Game:
 
     def show_str(self, string, x, y, size=30, color="white", time=900):
         self.text = self.canvas.create_text(x, y, text=string, font=("Arial", size), fill=color)
-        self.root.after(time, self.del_str)  # 0.9秒後刪除顯示分數
+        if time != -1:
+            self.root.after(time, self.del_str)  # 0.9秒後刪除顯示字串
 
     def del_str(self):
         self.canvas.delete(self.text)
@@ -75,9 +76,13 @@ def handel_server(s, game):
         print(msg)
         if msg == "show_mouse":
             game.run()
-        elif msg == "end":
+        elif msg == "round":
             send_msg(s, str(round(game.clktime, 2)).encode())
             game.clktime = 5
+        elif msg[0:3] == "end":
+            if game.mouse:  # 如果有地鼠(不是None)，就刪除
+                game.canvas.delete(game.mouse)
+            game.show_str(msg[4:], 300, 300, 30, "white", -1)
 def main():
     # 創建一個socket對象
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
